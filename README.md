@@ -70,7 +70,7 @@ As mentioned above, the pipeline consits the following steps implemented in 'lan
         return image_clrmasked
 ```
 
-2. The next step of the pipeline is to convert it into gray scale. Gaussian blur is then applied to the gray scale image as shown below. 
+2. The next step of the pipeline is to convert the masked image generated above into gray scale. Gaussian blur is then applied to the gray scale image as shown below. 
 
 ```python
     def apply_gaussblur(image, kernel_size = 3):
