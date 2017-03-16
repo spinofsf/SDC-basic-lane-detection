@@ -20,17 +20,150 @@ The python notebook `lane_detection_basic.ipynb` implements the pipeline and run
 * out_videos                        -   Folder with lane detection on the two videos with white and yellow lanes 
 * writeup.md                        -   You are reading it
 
-Recordings of driving in autonomous mode are available in the folder `out_videos`. The simulator i downloaded had a speed set to 9mph. Uploaded are videos in autonomous mode at speeds 9mph and 15 mph.
+### Pipeline description
 
-The actual model is implemented in `behavioural cloning.ipynb`. It also contains data augmenting and processing routines.
+As mentioned above, the pipeline consits the following steps implemented in 'lane_detection_basic.ipynb'. The entire pipeline is show below
 
-### Model Architecture and Training
+```python
+    #Image pipeline 
+    def image_pipeline(image, canny_thresh, vertices):  
+        mask_img = colormask_yellowwhite(image)
+        img_grayscale = convert_to_gscale(mask_img)
+        blur_img = apply_gaussblur(img_grayscale)
+        img_canny = apply_canny(blur_img,canny_thresh)
+        img_bounded = region_of_interest(img_canny, vertices)
+        lines = apply_hough(img_bounded)
+        filled_image = draw_lines(image, lines)
+        return filled_image
+```
 
-The model architecture is similar to the architecture proposed [here by NVIDIA](http://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf). This architecture has been demonstrated to work in real world setting and seems to have generated reasonably good results. Hence this network was chosen as the starting point. However, since our track and lane conditions are much simpler, the depth of the network and the nodes at each layer were reduced. As described below, the final model consists of 4 convolutional layers with 3x3 convolution windows. Relu activation and 2x2 max pooling is applied after each conv. layer. Finally 3 FC layers with dropout are utilized to estimate the output of steering angle. Most of the parameters such as window sizes, learning rate were finalized based on empirical data. 
+1. The first step in the pipeline is processing the RGB image through a color mask so that only yellows and whites are detected. This is implemented as shown below. Two copies of the source image are made and one is run through the white color mask and the other through an yellow color mask. The thresholds for both color masks are obtained from a few experiments. Finally both the masks are combined using 'cv2.addweighted()' function.
 
-The augmented data set was split into training and validation sets. Training and validation losses were monitored to ensure that the model is not overfitting the data. To better generalize, the driving data that was collected was augmented to reduce driving biases associated with the data set. Also, dropout was used in the dense layers toward the output. It was also observed that 10 epochs of training are sufficient to run the car reasonably well in autonomous mode. There is room for more optimization - both in terms of augmenting the data and the model if needed.
+```python
+    def colormask_yellowwhite(image):
+    
+        # Add yellow color mask and white mask to better detect the lanes
+        # White horizontal marker lanes seems to introduce errors int the pipeline 
+        
+        #contains actual image on the left    
+        image_left = np.copy(image)
+        image_rt = np.copy(image)
+    
+        #Look for white pixels
+        white_threshold = 200
+        lower_white = np.array([200, 200, 200])
+        upper_white = np.array([255, 255, 255])
+        white_mask = cv2.inRange(image_rt, lower_white, upper_white)
+        white_image = cv2.bitwise_and(image_rt, image_rt, mask=white_mask)
+    
+        # Look for yellow pixels
+        hsv = cv2.cvtColor(image_left, cv2.COLOR_BGR2HSV)
+        low_yellow = np.array([90,100,100])
+        up_yellow = np.array([110,255,255])
+        
+        yellow_mask = cv2.inRange(hsv, low_yellow, up_yellow)
+        yellow_image = cv2.bitwise_and(image_left, image_left, mask=yellow_mask)
+  
+        # Combine the two above images
+        image_clrmasked = cv2.addWeighted(white_image, 1., yellow_image, 1., 0.)
+    
+        return image_clrmasked
+```
 
-The car runs easily at the default speed setting of 9 mph set in `drive.py`. It also runs well at an increased speed setting of 15mph without crossing either of the lane boundaries. While there is a bit of moving sideways between the lanes and during the edges, this was primarily due to how the data was captured. The original data was captured at the fastest speed and did not necessarily keep the car always centered. This is another optimization that can be investigated.
+2. The next step of the pipeline is to convert it into gray scale. Gaussian blur is then applied to the gray scale image as shown below. 
+
+```python
+    def apply_gaussblur(image, kernel_size = 3):
+        img_blur = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
+        return img_blur
+ 
+    def convert_to_gscale(image):
+        img_grayscale = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY) 
+        return img_grayscale
+```    
+
+3. Then the image is sent through to a canny detector to detect edges. The underlying operation is gradient detection on intensity values in image. THe thresholds on canny were determined again by experimentation to ensur that most of the road is detected.
+
+```python
+    def apply_canny(image,thresh =(125,200)):
+        img_canny = cv2.Canny(image,thresh[0],thresh[1])
+        return img_canny
+```
+
+4. The next step is to apply a window that only keep the area of interest and masks the rest. This is implemented in the function 'region_of_interest()' 
+
+5. Hough transform is then applied on windowed image to convert the image into hough space and identify the lines. This is implemented using the `cv2.HoughLineP()` function shown below
+
+```python
+    def apply_hough(image):
+        
+        lines = cv2.HoughLinesP(image, 2, np.pi/180, 15, np.array([]), 10, 20)
+        return lines
+```
+
+6. The lines from hough transform are then processed and curve fitted to identify the lanes lines in the `draw_lines()` function. First the lines are checked to remove horizontal and vertical lines. Then the x_coordinates are compared to the center of the image to classify them for left and right lanes. A additional threshold on the slope of the image is applied to eliminate error cases. THe resulting left and right arrays are then curve fitted to obtain a linear function for the lanes. The actual lines are then calculated from the linear coefficients (y = mx + b => x = (y - m)/b) by calculating the x-coordinates for the bottom portion of the image. Once the end points of the lane line are calulated, the line is superimposed on the image using the function `cv2.line()`
+
+```python
+    def draw_lines(image, lines, color=[0, 255, 0], thickness=3):
+            
+        img_copy = np.copy(image)
+        x_center = (np.rint(image.shape[1]/2)).astype(int)
+                
+        leftfit_xarr = []
+        leftfit_yarr = []
+        rightfit_xarr = []
+        rightfit_yarr = []
+    
+        slope_thresh1 = -0.5
+        slope_thresh2 = 0.5
+    
+        for line in lines:
+            for x1,y1,x2,y2 in line:
+                #few error correction cases - eliminate slope of 0 or infinity
+                if ((x1 == x2) or (y1 == y2)):
+                    break;  
+            
+                #check slope and classify them as left and right lines
+                slope = (y2-y1)/(x2-x1);
+            
+                if ((x1 < x_center) and (x2 < x_center) and (slope < slope_thresh1) ):
+                    leftfit_xarr = np.append(leftfit_xarr, x1)
+                    leftfit_yarr = np.append(leftfit_yarr,y1)
+                    leftfit_xarr = np.append(leftfit_xarr, x2)
+                    leftfit_yarr = np.append(leftfit_yarr,y2)
+                                
+                elif ((x1 > x_center) and (x2 > x_center) and (slope > slope_thresh2)):
+                    rightfit_xarr = np.append(rightfit_xarr, x1)
+                    rightfit_yarr = np.append(rightfit_yarr,y1)
+                    rightfit_xarr = np.append(rightfit_xarr, x2)
+                    rightfit_yarr = np.append(rightfit_yarr,y2)
+
+        #fit the x and y lane coordinates collected 
+        fitleft_m, fitleft_c = np.polyfit(leftfit_xarr, leftfit_yarr, 1)
+        fitright_m, fitright_c = np.polyfit(rightfit_xarr, rightfit_yarr, 1)
+    
+        #define the ycorodinates where the linear fit will be evaluated
+        y_vals_max = img_copy.shape[0]
+        y_vals_min = img_copy.shape[0] - 210
+    
+        #calculate x values of left and right lanes from the linear fit
+        x_vals_lft_min = ((y_vals_min - fitleft_c)/fitleft_m).astype(int)
+        x_vals_lft_max = ((y_vals_max - fitleft_c)/fitleft_m).astype(int)
+    
+        x_vals_rt_min = ((y_vals_min - fitright_c)/fitright_m).astype(int)
+        x_vals_rt_max = ((y_vals_max - fitright_c)/fitright_m).astype(int)
+    
+        #draw the line on the source image
+        cv2.line(image, (x_vals_lft_min, y_vals_min), (x_vals_lft_max, y_vals_max), color, thickness)
+        cv2.line(image, (x_vals_rt_min, y_vals_min), (x_vals_rt_max, y_vals_max), color, thickness)
+     
+        return image
+```
+
+Here are a few images with the detected lane lines.
+![alt text](./test_images_output/out_solidWhiteCurve.jpg)
+![alt text](./test_images_output/out_solidYellowCurve2.jpg)
+
 
 ### Final Model 
 
