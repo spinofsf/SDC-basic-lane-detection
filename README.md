@@ -82,7 +82,7 @@ As mentioned above, the pipeline consits the following steps implemented in 'lan
         return img_grayscale
 ```    
 
-3. Then the image is sent through to a canny detector to detect edges. The underlying operation is gradient detection on intensity values in image. THe thresholds on canny were determined again by experimentation to ensur that most of the road is detected.
+3. Then the image is sent through to a canny detector to detect edges. The underlying operation is gradient detection on intensity values of the image. THe thresholds on canny were determined again by experimentation to ensure that most of the lanes were detected.
 
 ```python
     def apply_canny(image,thresh =(125,200)):
