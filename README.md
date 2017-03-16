@@ -37,7 +37,7 @@ As mentioned above, the pipeline consits the following steps implemented in 'lan
         return filled_image
 ```
 
-1. The first step in the pipeline is processing the RGB image through a color mask so that only yellows and whites are detected. This is implemented as shown below. Two copies of the source image are made and one is run through the white color mask and the other through an yellow color mask. The thresholds for both color masks are obtained from a few experiments. Finally both the masks are combined using 'cv2.addweighted()' function.
+1. The first step in the pipeline is processing the RGB image through a color mask so that only yellows and whites are detected. This is implemented as shown below. Two copies of the source image are made - one copy is run through a white color mask, and the other through an yellow color mask. The threshold values for both color masks are obtained from a few experiments. Finally both the masks are combined using 'cv2.addweighted()' function.
 
 ```python
     def colormask_yellowwhite(image):
