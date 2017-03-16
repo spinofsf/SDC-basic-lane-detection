@@ -167,8 +167,8 @@ Here are a few images with the detected lane lines.
 
 ### Potential Shortcomings
 
-There are many shortcomings of this simple lane detection model. First curvature of lanes are not detected and the simple linear fit does not capture the lanes in the real world. Second, imperfections in the lanes are not accounted for - for example if lane is missing for a very small distance on the road, the algorithm currently does not do any extrapolation/prediction.    
+There are many shortcomings of this simple lane detection model. First curvature of lanes are not detected and the simple linear fit does not capture the lanes in the real world. Second, imperfections in the lanes are not accounted for - differnt lighting and surface conditions are not accounted for. Even if the lane is missing for a very small distance on the road, the algorithm currently does not do any extrapolation/prediction.    
 
 ### Potential improvements
 
-One potential improvement can be using a polyfit with higher orders to track lines that are curved. Additional improvements on color porcessing can be implemented to ensure that the road is detected under different light and shadow conditions.
+One potential improvement can be using a polyfit with higher orders to track lines that are curved. Additional improvements on color processing can be implemented to ensure that the road is detected under different light and shadow conditions.
