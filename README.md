@@ -90,7 +90,7 @@ As mentioned above, the pipeline consits the following steps implemented in 'lan
         return img_canny
 ```
 
-4. The next step is to apply a window that only keep the area of interest and masks the rest. This is implemented in the function 'region_of_interest()' 
+4. The next step is to apply a window that only keep the area of interest and masks the rest of the image. This is implemented in the function 'region_of_interest()' 
 
 5. Hough transform is then applied on windowed image to convert the image into hough space and identify the lines. This is implemented using the `cv2.HoughLineP()` function shown below
 
