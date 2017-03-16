@@ -13,7 +13,7 @@ Key steps in this pipeline are:
 ---
 ### Code
 
-The python notebook `lane_detection_basic.ipynb` implements the pipeline and runs the pipeline on test images and video. Implementation consists of the following files located in the source directory
+The python notebook `lane_detection_basic.ipynb` implements the pipeline and runs the pipeline on test images and video. Implementation consists of the following files located in this directory
 
 * lane_detection_basic.ipynb        -   Implement the pipeline   
 * out_images                        -   Folder with outputs from running the pipeline on test images
