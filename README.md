@@ -92,16 +92,15 @@ As mentioned above, the pipeline consits the following steps implemented in 'lan
 
 4. The next step is to apply a window that only keep the area of interest and masks the rest of the image. This is implemented in the function 'region_of_interest()' 
 
-5. Hough transform is then applied on windowed image to convert the image into hough space and identify the lines. This is implemented using the `cv2.HoughLineP()` function shown below
+5. Hough transform is then applied on the windowed image to convert it into hough space and identify the lines. This is implemented using the `cv2.HoughLineP()` function shown below
 
 ```python
-    def apply_hough(image):
-        
+    def apply_hough(image):  
         lines = cv2.HoughLinesP(image, 2, np.pi/180, 15, np.array([]), 10, 20)
         return lines
 ```
 
-6. The lines from hough transform are then processed and curve fitted to identify the lanes lines in the `draw_lines()` function. First the lines are checked to remove horizontal and vertical lines. Then the x_coordinates are compared to the center of the image to classify them for left and right lanes. A additional threshold on the slope of the image is applied to eliminate error cases. THe resulting left and right arrays are then curve fitted to obtain a linear function for the lanes. The actual lines are then calculated from the linear coefficients (y = mx + b => x = (y - m)/b) by calculating the x-coordinates for the bottom portion of the image. Once the end points of the lane line are calulated, the line is superimposed on the image using the function `cv2.line()`
+6. The lines from hough transform are then processed and curve fitted to identify lanes lines in the function `draw_lines()`. First the lines are checked to remove horizontal and vertical lines. Then the x_coordinates are compared to the center of the image to classify them as left or right lanes. A additional threshold on the slope of the image is applied to eliminate error cases. The resulting left and right arrays are then curve fitted to obtain a linear function for lanes. The actual lines are then calculated from the linear coefficients (y = mx + b => x = (y - m)/b) and x-coordinates for the bottom portion of the image. Once the end points of the lane lines are calulated, the line is superimposed on the image using the function `cv2.line()`
 
 ```python
     def draw_lines(image, lines, color=[0, 255, 0], thickness=3):
